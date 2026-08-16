@@ -25,7 +25,6 @@ var (
 	servingDir = flag.String("serving_dir",
 		"/srv/man",
 		"Directory from which manpages should be served")
-
 	listenAddr = flag.String("listen",
 		"localhost:8089",
 		"host:port on which to serve manpages")
@@ -38,16 +37,27 @@ var fileNotFound = errors.New("File not found")
 
 func serveFile(w http.ResponseWriter, r *http.Request) error {
 	compressed := false
-	path := filepath.Join(*servingDir, r.URL.Path)
-	if r.URL.Path == "/" {
-		path = filepath.Join(path, "index.html")
+
+	// os.Root (Go 1.24+) restricts all file operations to *servingDir
+	// and automatically prevents path traversal without manual ../ checks.
+	root, err := os.OpenRoot(*servingDir)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return nil
 	}
-	f, err := os.Open(path)
+	defer root.Close()
+
+	p := strings.TrimPrefix(r.URL.Path, "/")
+	if p == "" {
+		p = "index.html"
+	}
+
+	// Try plain file first, then compressed .gz variant
+	f, err := root.Open(p)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// Try with .gz suffix
 			compressed = true
-			f, err = os.Open(path + ".gz")
+			f, err = root.Open(p + ".gz")
 			if err != nil && os.IsNotExist(err) {
 				return fileNotFound
 			}
@@ -58,12 +68,11 @@ func serveFile(w http.ResponseWriter, r *http.Request) error {
 	}
 	defer f.Close()
 
-	ctype := mime.TypeByExtension(filepath.Ext(path))
+	ctype := mime.TypeByExtension(filepath.Ext(p))
 	if ctype == "" {
 		ctype = "text/html"
 	}
 	w.Header().Set("Content-Type", ctype)
-
 	rd := io.Reader(f)
 	if compressed {
 		gzipr, err := gzip.NewReader(f)
@@ -73,25 +82,20 @@ func serveFile(w http.ResponseWriter, r *http.Request) error {
 		rd = gzipr
 		defer gzipr.Close()
 	}
-
 	_, err = io.Copy(w, rd)
 	return err
 }
 
 func main() {
 	flag.Parse()
-
 	idx, err := redirect.IndexFromProto(filepath.Join(*servingDir, "auxserver.idx"))
 	if err != nil {
 		log.Fatalf("Could not load auxserver index: %v", err)
 	}
-
 	commonTmpls := commontmpl.MustParseCommonTmpls()
 	notFoundTmpl := template.Must(commonTmpls.New("notfound").Parse(bundled.Asset("notfound.tmpl")))
 	server := auxserver.NewServer(idx, notFoundTmpl, debimanVersion)
-
 	http.HandleFunc("/jump", server.HandleJump)
-
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// Similarly to http.ServeFile, deny requests containing .. as
 		// a precaution. The server will usually be running on
@@ -102,7 +106,6 @@ func main() {
 			log.Printf("Error: invalid URL path %q", r.URL.Path)
 			return
 		}
-
 		// Check if the path refers to an existing file (possibly compressed)
 		err := serveFile(w, r)
 		if err != nil && err != fileNotFound {
@@ -113,10 +116,8 @@ func main() {
 		if err == nil {
 			return
 		}
-
 		server.HandleRedirect(w, r)
 	})
-
 	log.Printf("Serving manpages from %q on %q", *servingDir, *listenAddr)
 	log.Fatal(http.ListenAndServe(*listenAddr, nil))
 }
