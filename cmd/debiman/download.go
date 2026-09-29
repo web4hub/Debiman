@@ -74,19 +74,24 @@ func findClosestFile(logger *log.Logger, p pkgEntry, src, name string, contentBy
 	// We still have more than one choice. In case the candidate is in
 	// the same package as the source link, we take it.
 	if len(c) > 1 {
-		var last *contentEntry
-		cnt := 0
+		var samePackage *contentEntry
+		samePackageCount := 0
+
 		for _, e := range c {
 			if e.binarypkg != p.binarypkg {
 				continue
 			}
-			last = e
-			if cnt++; cnt > 1 {
+
+			samePackage = e
+			samePackageCount++
+
+			if samePackageCount > 1 {
 				break
 			}
 		}
-		if cnt == 1 {
-			c = []*contentEntry{last}
+
+		if samePackageCount == 1 {
+			c = []*contentEntry{samePackage}
 		}
 
 		// We can’t make a 100% correct choice, but we can at least
@@ -124,6 +129,7 @@ func findFile(logger *log.Logger, src, name string, contentByPath map[string][]*
 		"/" + filepath.Dir(src) + "/..",
 		"/usr/share/man",
 	}
+
 	logger.Printf("searching reference so=%q", name)
 	for _, search := range searchPath {
 		var check string
@@ -132,6 +138,7 @@ func findFile(logger *log.Logger, src, name string, contentByPath map[string][]*
 		} else {
 			check = filepath.Join(search, name)
 		}
+
 		// Some references include the .gz suffix, some don’t.
 		if !strings.HasSuffix(check, ".gz") {
 			check = check + ".gz"
@@ -139,10 +146,12 @@ func findFile(logger *log.Logger, src, name string, contentByPath map[string][]*
 
 		c, ok := contentByPath[strings.TrimPrefix(check, "/usr/share/man/")]
 		if !ok {
-			log.Printf("%q does not exist", check)
+			logger.Printf("%q does not exist", check)
 			continue
 		}
 
+		// Work on a copy because contentByPath is shared between workers.
+		c = append([]*contentEntry(nil), c...)
 		sort.Sort(contentByBinarypkg(c))
 
 		m, err := manpage.FromManPath(strings.TrimPrefix(check, "/usr/share/man/"), &manpage.PkgMeta{
@@ -169,6 +178,7 @@ func soElim(logger *log.Logger, src string, r io.Reader, w io.Writer, contentByP
 			fmt.Fprintln(w, line)
 			continue
 		}
+
 		so := strings.TrimSpace(line[len(".so "):])
 
 		resolved, ref, ok := findFile(logger, src, so, contentByPath)
@@ -184,6 +194,7 @@ func soElim(logger *log.Logger, src string, r io.Reader, w io.Writer, contentByP
 			refs = append(refs, ref)
 		}
 	}
+
 	return refs, scanner.Err()
 }
 
@@ -193,17 +204,20 @@ func writeManpage(logger *log.Logger, src, dest string, r io.Reader, m *manpage.
 	if err != nil {
 		return nil, err
 	}
+
 	if !utf8.Valid(content) {
 		content, err = ioutil.ReadAll(recode.Reader(bytes.NewReader(content), m.Language))
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	err = write.Atomically(dest, true, func(w io.Writer) error {
 		var err error
 		refs, err = soElim(logger, src, bytes.NewReader(content), w, contentByPath)
 		return err
 	})
+
 	return refs, err
 }
 
@@ -213,6 +227,7 @@ func createAlternativesLinks(logger *log.Logger, p pkgEntry, gv globalView) (map
 	if len(gv.alternatives[key]) == 0 {
 		return nil, nil
 	}
+
 	logger.Printf("creating %d links for binary package %q", len(gv.alternatives[key]), p.binarypkg)
 	for _, link := range gv.alternatives[key] {
 		if !strings.HasPrefix(link.from, "/usr/share/man/") {
@@ -262,6 +277,7 @@ func createAlternativesLinks(logger *log.Logger, p pkgEntry, gv globalView) (map
 			return refs, err
 		}
 	}
+
 	return refs, nil
 }
 
@@ -271,8 +287,7 @@ func downloadPkg(ar *archive.Downloader, p pkgEntry, gv globalView) error {
 	logger := log.New(os.Stderr, p.suite+"/"+p.binarypkg+": ", log.LstdFlags)
 
 	if !*forceReextract && canSkip(p, vPath) {
-		// Even when skipping the package, the alternatives data we get from
-		// piuparts might have changed, see issue #119.
+		// Even when skipping the package, the alternatives data we get from piuparts might have changed, see issue #119.
 		if _, err := createAlternativesLinks(logger, p, gv); err != nil {
 			return err
 		}
@@ -301,11 +316,13 @@ func downloadPkg(ar *archive.Downloader, p pkgEntry, gv globalView) error {
 	if err != nil {
 		return fmt.Errorf("loading %q: %v", p.filename, err)
 	}
+
 	for {
 		header, err := d.Data.Next()
 		if err == io.EOF {
 			break
 		}
+
 		if err != nil {
 			return err
 		}
@@ -316,9 +333,11 @@ func downloadPkg(ar *archive.Downloader, p pkgEntry, gv globalView) error {
 			header.Typeflag != tar.TypeLink {
 			continue
 		}
+
 		if header.FileInfo().IsDir() {
 			continue
 		}
+
 		if !strings.HasPrefix(header.Name, "./usr/share/man/") {
 			continue
 		}
@@ -349,14 +368,17 @@ func downloadPkg(ar *archive.Downloader, p pkgEntry, gv globalView) error {
 				logger.Printf("WARNING: hard link name %q (underneath /usr/share/man) cannot be parsed: %v", header.Linkname, err)
 				continue
 			}
+
 			if err := os.Link(filepath.Join(*servingDir, d.ServingPath()+".gz"), m.ServingPath()+".gz"); err != nil {
 				if os.IsExist(err) {
 					continue
 				}
 				return err
 			}
+
 			continue
 		}
+
 		if header.Typeflag == tar.TypeSymlink {
 			// filepath.Join calls filepath.Abs
 			resolved := filepath.Join(filepath.Dir(strings.TrimPrefix(header.Name, ".")), header.Linkname)
@@ -381,12 +403,15 @@ func downloadPkg(ar *archive.Downloader, p pkgEntry, gv globalView) error {
 				logger.Printf("WARNING: %v", err)
 				continue
 			}
+
 			if err := os.Symlink(rel, destPath); err != nil {
 				if os.IsExist(err) {
 					continue
 				}
+
 				return err
 			}
+
 			if err := maybeSetLinkMtime(destPath, header.ModTime); err != nil {
 				return err
 			}
@@ -403,13 +428,16 @@ func downloadPkg(ar *archive.Downloader, p pkgEntry, gv globalView) error {
 			}
 			r = gzr
 		}
+
 		refs, err := writeManpage(logger, header.Name, destPath, r, m, gv.contentByPath)
 		if err != nil {
 			return err
 		}
+
 		if err := os.Chtimes(destPath, header.ModTime, header.ModTime); err != nil {
 			return err
 		}
+
 		if gzr != nil {
 			if err := gzr.Close(); err != nil {
 				return err
@@ -426,6 +454,7 @@ func downloadPkg(ar *archive.Downloader, p pkgEntry, gv globalView) error {
 	if err != nil {
 		return err
 	}
+
 	for r := range refs {
 		allRefs[r] = true
 	}
@@ -441,11 +470,13 @@ func downloadPkg(ar *archive.Downloader, p pkgEntry, gv globalView) error {
 		if err != nil {
 			return err
 		}
+
 		for {
 			header, err := d.Data.Next()
 			if err == io.EOF {
 				break
 			}
+
 			if err != nil {
 				return err
 			}
@@ -469,6 +500,7 @@ func downloadPkg(ar *archive.Downloader, p pkgEntry, gv globalView) error {
 			if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
 				return err
 			}
+
 			if err := write.Atomically(destPath, false, func(w io.Writer) error {
 				_, err := io.Copy(w, d.Data)
 				return err
@@ -485,6 +517,7 @@ func downloadPkg(ar *archive.Downloader, p pkgEntry, gv globalView) error {
 			// might lag behind), this can happen occasionally.
 			return nil
 		}
+
 		return fmt.Errorf("Writing version file %q: %v", vPath, err)
 	}
 
@@ -496,6 +529,7 @@ func downloadPkg(ar *archive.Downloader, p pkgEntry, gv globalView) error {
 func parallelDownload(ar *archive.Downloader, gv globalView) error {
 	eg, ctx := errgroup.WithContext(context.Background())
 	downloadChan := make(chan pkgEntry)
+
 	// TODO: flag for parallelism level
 	for i := 0; i < 10; i++ {
 		eg.Go(func() error {
@@ -504,16 +538,20 @@ func parallelDownload(ar *archive.Downloader, gv globalView) error {
 					return fmt.Errorf("downloading %s/src:%s %v: %v", p.suite, p.source, p.version, err)
 				}
 			}
+
 			return nil
 		})
 	}
+
+loop:
 	for _, p := range gv.pkgs {
 		select {
 		case downloadChan <- *p:
 		case <-ctx.Done():
-			break
+			break loop
 		}
 	}
+
 	close(downloadChan)
 	return eg.Wait()
 }
