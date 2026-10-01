@@ -130,7 +130,7 @@ re-use rendered manpages (for symlinked manpages):
 
 ## interesting test cases
 
-[crontab(5)](https://manpages.debian.org/crontab(5)) is present in multiple Debian versions, multiple languages, multiple sections and multiple conflicting packages. Hence, it showcases all debiman features.
+[crontab(5)](https://manpages.web4hub.org/crontab(5)) is present in multiple Debian versions, multiple languages, multiple sections and multiple conflicting packages. Hence, it showcases all debiman features.
 
 [w3m(1)](https://manpages.debian.org/w3m(1)) has a Japanese translation which is only present in UTF-8 starting with Debian jessie. It also has a German translation starting with Debian stretch.
 
