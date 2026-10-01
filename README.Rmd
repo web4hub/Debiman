@@ -13,7 +13,7 @@ debiman makes (Debian) manpages accessible in a web browser. Its goals are, in o
 2. **visually appealing** and **convenient**: reading manpages should be fun, convenience features (e.g. permalinks, URL redirects, easy navigation) should be available
 3. **speed**: manpages should be quick to load, new manpages should be quickly ingested, the program should run quickly for pleasant development
 
-Currently, there is one known bug with regards to completeness ([#12](https://github.com/web4hub/debiman/issues/12)).
+Currently, there is one known bug with regards to completeness ([#123](https://github.com/web4hub/debiman/issues/123)).
 
 With regards to speed, debiman can process all manpages of Debian unstable in **less than 10 minutes** on a modern machine. Incremental updates complete in **less than 15 seconds**. For more details, see [PERFORMANCE.md](https://github.com/web4hub/debiman/blob/main/PERFORMANCE.md).
 
@@ -55,22 +55,24 @@ stable, you likely need to install from backports.
 
 ### Install debiman
 
-To download, compile and install debiman to `~/go/bin`, run:
-```
+To download, compile and install debiman to 
+```bash
+`~/go/bin`, run:
 go install github.com/web4hub/debiman/cmd/...@main
 ```
 
 ### Run debiman
 
 To synchronize Debian testing to ~/man and render a handful of packages, run:
-```
+
+```go
 ~/go/bin/debiman -serving_dir=~/man -only_render_pkgs=qelectrotech,i3-wm,cron
 ```
 
 ### Test the output
 
-To serve manpages from ~/man on localhost:8089, run:
-```
+To serve manpages from` ~/man` on localhost:8089, run:
+```bash
 ~/go/bin/debiman-minisrv -serving_dir=~/man
 ```
 
@@ -81,7 +83,7 @@ refer to the web server example configuration files in example/.
 
 To update your debiman installation after making changes to the HTML
 templates or code in your `debiman` git working directory, run:
-```
+```go
 go generate github.com/web4hub/debiman/...
 go install github.com/web4hub/debiman/cmd/...
 ```
@@ -90,7 +92,7 @@ go install github.com/web4hub/debiman/cmd/...
 
 For https://manpages.debian.org, we run:
 
-```
+```bash
 flock /srv/manpages.debian.org/debiman/exclusive.lock \
 nice -n 5 \
 ionice -n 7 \
@@ -138,7 +140,7 @@ re-use rendered manpages (for symlinked manpages):
 
 ## recommended reading
 
-https://wiki.debian.org/RepositoryFormat
+https://wiki.debian.org/debiman
 
 ## URLs
 
