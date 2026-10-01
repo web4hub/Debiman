@@ -1,9 +1,9 @@
 # debiman
 
+
 [![Actions workflow](https://github.com/web4hub/debiman/actions/workflows/main.yml/badge.svg)](https://github.com/web4hub/debiman/actions/workflows/main.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Debian/debiman)](https://goreportcard.com/report/github.com/Debian/debiman)
-
-<img src="https://web4hub.github.io/debiman/debiman-logo.svg" width="300" height="280" align="right" alt="debiman logo">
+<img src="https://debian.github.io/debiman/debiman-logo.svg" width="300" height="280" align="right" alt="debiman logo">
 
 ## Goals
 
