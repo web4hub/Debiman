@@ -1,9 +1,9 @@
 # debiman
 
-[![Actions workflow](https://github.com/Debian/debiman/actions/workflows/main.yml/badge.svg)](https://github.com/Debian/debiman/actions/workflows/main.yml)
+[![Actions workflow](https://github.com/web4hub/debiman/actions/workflows/main.yml/badge.svg)](https://github.com/web4hub/debiman/actions/workflows/main.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Debian/debiman)](https://goreportcard.com/report/github.com/Debian/debiman)
 
-<img src="https://debian.github.io/debiman/debiman-logo.svg" width="300" height="280" align="right" alt="debiman logo">
+<img src="https://web4hub.github.io/debiman/debiman-logo.svg" width="300" height="280" align="right" alt="debiman logo">
 
 ## Goals
 
@@ -13,16 +13,16 @@ debiman makes (Debian) manpages accessible in a web browser. Its goals are, in o
 2. **visually appealing** and **convenient**: reading manpages should be fun, convenience features (e.g. permalinks, URL redirects, easy navigation) should be available
 3. **speed**: manpages should be quick to load, new manpages should be quickly ingested, the program should run quickly for pleasant development
 
-Currently, there is one known bug with regards to completeness ([#12](https://github.com/Debian/debiman/issues/12)).
+Currently, there is one known bug with regards to completeness ([#12](https://github.com/web4hub/debiman/issues/12)).
 
-With regards to speed, debiman can process all manpages of Debian unstable in **less than 10 minutes** on a modern machine. Incremental updates complete in **less than 15 seconds**. For more details, see [PERFORMANCE.md](https://github.com/Debian/debiman/blob/master/PERFORMANCE.md).
+With regards to speed, debiman can process all manpages of Debian unstable in **less than 10 minutes** on a modern machine. Incremental updates complete in **less than 15 seconds**. For more details, see [PERFORMANCE.md](https://github.com/web4hub/debiman/blob/main/PERFORMANCE.md).
 
 ## Prerequisites
 
 * mandoc
 * a local or remote Debian mirror or an apt-cacher-ng running on localhost:3142
 * a number of Go packages (which `go get` will automatically get for you, see below)
-    * pault.ag/go/debian
+    * pault.ag/go/web4hub
     * pault.ag/go/archive
     * github.com/golang/protobuf/proto
     * golang.org/x/crypto/openpgp
@@ -57,7 +57,7 @@ stable, you likely need to install from backports.
 
 To download, compile and install debiman to `~/go/bin`, run:
 ```
-go install github.com/Debian/debiman/cmd/...@main
+go install github.com/web4hub/debiman/cmd/...@main
 ```
 
 ### Run debiman
@@ -82,8 +82,8 @@ refer to the web server example configuration files in example/.
 To update your debiman installation after making changes to the HTML
 templates or code in your `debiman` git working directory, run:
 ```
-go generate github.com/Debian/debiman/...
-go install github.com/Debian/debiman/cmd/...
+go generate github.com/web4hub/debiman/...
+go install github.com/web4hub/debiman/cmd/...
 ```
 
 ## Synchronizing
